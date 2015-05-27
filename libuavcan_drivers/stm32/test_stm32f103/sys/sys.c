@@ -13,9 +13,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdarg.h>
-
-__attribute__((weak))
-void *__dso_handle;
+#include "osal.h"
 
 #if !CH_DBG_ENABLED
 const char *dbg_panic_msg;
@@ -29,7 +27,7 @@ void sysHaltHook_(void)
 
     port_disable();
     sysEmergencyPrint("\nPANIC [");
-    const Thread *pthread = chThdSelf();
+    const thread_t *pthread = chThdGetSelfX();
     if (pthread && pthread->p_name)
     {
         sysEmergencyPrint(pthread->p_name);
@@ -50,33 +48,8 @@ void sysHaltHook_(void)
 #endif
 }
 
-void sysPanic(const char* msg)
-{
-    dbg_panic_msg = msg;
-    chSysHalt();
-    while (1) { }
-}
-
 __attribute__((weak))
 void sysApplicationHaltHook(void) { }
-
-void sysSleepUntilChTime(systime_t sleep_until)
-{
-    chSysLock();
-    sleep_until -= chTimeNow();
-    if (((int)sleep_until) > 0)
-    {
-        chThdSleepS(sleep_until);
-    }
-    chSysUnlock();
-
-#if DEBUG_BUILD
-    if (((int)sleep_until) < 0)
-    {
-        lowsyslog("%s: Lag %d ts\n", chThdSelf()->p_name, (int)sleep_until);
-    }
-#endif
-}
 
 static void reverse(char* s)
 {
@@ -147,20 +120,9 @@ void __assert_func(const char* file, int line, const char* func, const char* exp
 
     dbg_panic_msg = buf;
 
-    chSysHalt();
+    chSysHalt(buf);
     while (1) { }
 }
-
-void _exit(int status)
-{
-    (void) status;
-    chSysHalt();
-    while (1) { }
-}
-
-pid_t _getpid(void) { return 1; }
-
-void _kill(pid_t id) { (void) id; }
 
 /// From unistd
 int usleep(useconds_t useconds)

@@ -10,7 +10,7 @@
 #  error Either DEBUG_BUILD or RELEASE_BUILD must be defined
 #endif
 
-//#include <zubax_chibios/sys/assert_always.h>
+#include <ch.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,15 +27,6 @@ void lowsyslog(const char* format, ...);
  * Emergency termination hook that can be overriden by the application.
  */
 extern void sysApplicationHaltHook(void);
-
-/**
- * Replacement for chThdSleepUntil() that accepts timestamps from the past.
- * http://sourceforge.net/p/chibios/bugs/292/#ec7c
- */
-void sysSleepUntilChTime(systime_t sleep_until);
-
-__attribute__((noreturn))
-void sysPanic(const char* msg);
 
 #ifdef __cplusplus
 }

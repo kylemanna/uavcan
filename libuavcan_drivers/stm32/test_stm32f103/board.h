@@ -4,10 +4,6 @@
 
 #pragma once
 
-/// Assert is needed for STM32 SPL (if it is being used, that is)
-#include <assert.h>
-#define assert_param(x) assert(x)
-
 #define STM32_LSECLK            0
 #define STM32_HSECLK            8000000
 

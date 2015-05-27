@@ -5,6 +5,7 @@
  */
 
 #include <ch.hpp>
+#include <osal.h>
 #include <cstdlib>
 #include <sys/types.h>
 #include "sys.h"
@@ -21,12 +22,12 @@ void* operator new[](size_t sz)
 
 void operator delete(void*)
 {
-    sysPanic("delete");
+    osalSysHalt("delete");
 }
 
 void operator delete[](void*)
 {
-    sysPanic("delete");
+    osalSysHalt("delete");
 }
 
 /*
@@ -37,39 +38,39 @@ void operator delete[](void*)
 namespace std
 {
 
-void __throw_bad_exception() { sysPanic("throw"); }
+void __throw_bad_exception() { osalSysHalt("throw"); }
 
-void __throw_bad_alloc() { sysPanic("throw"); }
+void __throw_bad_alloc() { osalSysHalt("throw"); }
 
-void __throw_bad_cast() { sysPanic("throw"); }
+void __throw_bad_cast() { osalSysHalt("throw"); }
 
-void __throw_bad_typeid() { sysPanic("throw"); }
+void __throw_bad_typeid() { osalSysHalt("throw"); }
 
-void __throw_logic_error(const char*) { sysPanic("throw"); }
+void __throw_logic_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_domain_error(const char*) { sysPanic("throw"); }
+void __throw_domain_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_invalid_argument(const char*) { sysPanic("throw"); }
+void __throw_invalid_argument(const char*) { osalSysHalt("throw"); }
 
-void __throw_length_error(const char*) { sysPanic("throw"); }
+void __throw_length_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_out_of_range(const char*) { sysPanic("throw"); }
+void __throw_out_of_range(const char*) { osalSysHalt("throw"); }
 
-void __throw_runtime_error(const char*) { sysPanic("throw"); }
+void __throw_runtime_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_range_error(const char*) { sysPanic("throw"); }
+void __throw_range_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_overflow_error(const char*) { sysPanic("throw"); }
+void __throw_overflow_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_underflow_error(const char*) { sysPanic("throw"); }
+void __throw_underflow_error(const char*) { osalSysHalt("throw"); }
 
-void __throw_ios_failure(const char*) { sysPanic("throw"); }
+void __throw_ios_failure(const char*) { osalSysHalt("throw"); }
 
-void __throw_system_error(int) { sysPanic("throw"); }
+void __throw_system_error(int) { osalSysHalt("throw"); }
 
-void __throw_future_error(int) { sysPanic("throw"); }
+void __throw_future_error(int) { osalSysHalt("throw"); }
 
-void __throw_bad_function_call() { sysPanic("throw"); }
+void __throw_bad_function_call() { osalSysHalt("throw"); }
 
 }
 
@@ -78,7 +79,7 @@ namespace __gnu_cxx
 
 void __verbose_terminate_handler()
 {
-    sysPanic("terminate");
+    osalSysHalt("terminate");
 }
 
 }
@@ -122,11 +123,6 @@ void __cxa_guard_release (__guard* g)
 
 void __cxa_guard_abort (__guard*)
 {
-}
-
-void __cxa_pure_virtual()
-{
-    sysPanic("pure virtual");
 }
 
 }

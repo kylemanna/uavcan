@@ -47,7 +47,7 @@ static void genericPrint(const char* format, va_list vl)
      */
     chMtxLock(&_mutex);
     writeExpandingCrLf(_buffer);
-    chMtxUnlock();
+    chMtxUnlock(&_mutex);
 }
 
 
@@ -126,7 +126,7 @@ void die(int status)
 class : public chibios_rt::BaseStaticThread<1024>
 {
 public:
-    msg_t main()
+    void main()
     {
         /*
          * Setting up the node parameters
@@ -214,7 +214,6 @@ public:
                          uavcan_stm32::clock::getUtcAjdustmentJumpCount());
 #endif
         }
-        return msg_t();
     }
 } uavcan_node_thread;
 
