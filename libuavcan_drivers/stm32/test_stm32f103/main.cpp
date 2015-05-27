@@ -3,9 +3,67 @@
  */
 
 #include <unistd.h>
-#include <zubax_chibios/sys/sys.h>
+//#include <zubax_chibios/sys/sys.h>
 #include <uavcan_stm32/uavcan_stm32.hpp>
 #include <uavcan/protocol/global_time_sync_slave.hpp>
+//#include "board.h"
+//
+#include <ch.h>
+#include <hal.h>
+#include <chprintf.h>
+#include <memstreams.h>
+
+static MUTEX_DECL(_mutex);  ///< Doesn't require initialization
+static char _buffer[256];
+
+static void writeExpandingCrLf(const char* str)
+{
+    for (const char* pc = str; *pc != '\0'; pc++)
+    {
+        if (*pc == '\n')
+        {
+            sdPut(&STDOUT_SD, '\r');
+        }
+        sdPut(&STDOUT_SD, *pc);
+    }
+}
+
+
+static void genericPrint(const char* format, va_list vl)
+{
+    /*
+     * Printing the string into the buffer using chvprintf()
+     */
+    MemoryStream ms;
+    msObjectInit(&ms, (uint8_t*)_buffer, sizeof(_buffer), 0);
+
+    BaseSequentialStream* chp = (BaseSequentialStream*)&ms;
+    chvprintf(chp, format, vl);
+
+    chSequentialStreamPut(chp, 0);
+
+    /*
+     * Writing the buffer replacing "\n" --> "\r\n"
+     */
+    chMtxLock(&_mutex);
+    writeExpandingCrLf(_buffer);
+    chMtxUnlock();
+}
+
+
+/**
+ * NuttX-like console print; should be used instead of printf()/chprintf()
+ * TODO: use type safe version for C++.
+ */
+__attribute__ ((format (printf, 1, 2)))
+void lowsyslog(const char* format, ...)
+{
+    va_list vl;
+    va_start(vl, format);
+    genericPrint(format, vl);
+    va_end(vl);
+}
+
 
 namespace app
 {
