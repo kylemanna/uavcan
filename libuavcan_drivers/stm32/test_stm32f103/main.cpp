@@ -132,10 +132,10 @@ public:
          * Setting up the node parameters
          */
         Node& node = app::getNode();
-#if 0
 
         node.setNodeID(64);
         node.setName("org.uavcan.stm32_test_stm32f103");
+
         // TODO: fill software version info (version number, VCS commit hash, ...)
         // TODO: fill hardware version info (version number, unique ID)
 
@@ -214,7 +214,6 @@ public:
                          uavcan_stm32::clock::getUtcAjdustmentJumpCount());
 #endif
         }
-#endif
     }
 } uavcan_node_thread;
 
