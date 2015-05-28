@@ -239,6 +239,9 @@ int main()
             ::usleep(25000);
         }
 
+        /* The following is very stack hungry and blows the main stack with -Os
+         * and THUMB mode, -O2 may be better
+         */
         const uavcan::UtcTime utc = uavcan_stm32::clock::getUtc();
         lowsyslog("UTC %lu sec   Rate corr: %fPPM   Jumps: %lu   Locked: %i\n",
                   static_cast<unsigned long>(utc.toMSec() / 1000),
