@@ -2,10 +2,11 @@
 # Build global options
 # NOTE: Can be overridden externally.
 #
+USE_LTO = no
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16 -fno-exceptions
+  USE_OPT = -O1 -ggdb -fomit-frame-pointer -falign-functions=16 -fno-exceptions
 endif
 
 # C specific options here (added to USE_OPT).
@@ -230,7 +231,7 @@ INCDIR += dsdlc_generated
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DDEBUG_BUILD=1 \
+UDEFS = -DDEBUG_BUILD=1 -D_DEBUG=1 \
         -DUAVCAN_STM32_NUM_IFACES=1 \
         -DUAVCAN_STM32_CHIBIOS=1 \
         -DUAVCAN_TINY=1 \

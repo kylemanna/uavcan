@@ -72,7 +72,7 @@ namespace
 
 uavcan_stm32::CanInitHelper<128> can;
 
-typedef uavcan::Node<2048> Node;
+typedef uavcan::Node<4096> Node;
 
 uavcan::LazyConstructor<Node> node_;
 
@@ -123,7 +123,7 @@ void die(int status)
     }
 }
 
-class : public chibios_rt::BaseStaticThread<1024>
+class : public chibios_rt::BaseStaticThread<2048>
 {
 public:
     void main()
@@ -132,10 +132,10 @@ public:
          * Setting up the node parameters
          */
         Node& node = app::getNode();
+#if 0
 
         node.setNodeID(64);
         node.setName("org.uavcan.stm32_test_stm32f103");
-
         // TODO: fill software version info (version number, VCS commit hash, ...)
         // TODO: fill hardware version info (version number, unique ID)
 
@@ -214,6 +214,7 @@ public:
                          uavcan_stm32::clock::getUtcAjdustmentJumpCount());
 #endif
         }
+#endif
     }
 } uavcan_node_thread;
 
