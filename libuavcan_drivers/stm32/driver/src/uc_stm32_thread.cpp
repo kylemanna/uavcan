@@ -41,7 +41,7 @@ void BusEvent::signalFromInterrupt()
 {
     chibios_rt::System::lockFromIsr();
     sem_.signalI();
-    chibios_rt::System::lockFromIsr();
+    chibios_rt::System::unlockFromIsr();
 }
 
 /*
