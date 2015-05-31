@@ -1,0 +1,10 @@
+#
+# Generic derailleur feedback, if available.
+#
+
+uint4 derailleur_id
+
+#
+# Whether the units are linear or angular depends on the actuator type (refer to the Command data type).
+#
+uint8 position        # index position
