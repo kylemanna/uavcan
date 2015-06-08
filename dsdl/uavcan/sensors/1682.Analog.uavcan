@@ -1,0 +1,7 @@
+#
+# Generic Analog Sensor Reading.
+#
+
+uint8 analog_id
+
+uint16 analog
