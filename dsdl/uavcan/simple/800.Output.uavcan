@@ -1,0 +1,12 @@
+#
+# Generic Analog Sensor Reading.
+#
+
+uint8 output_id
+
+# 0 is off, non-zero is on for non-PWM outputs otherwise PWM duty cycle
+uint8 out0
+uint8 out1
+uint8 out2
+uint8 out3
+uint8 out4
