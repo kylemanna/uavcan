@@ -155,10 +155,7 @@ void NodeStatusProvider::setSoftwareVersion(const protocol::SoftwareVersion& ver
 
 void NodeStatusProvider::setHardwareVersion(const protocol::HardwareVersion& version)
 {
-    if (node_info_.hardware_version == protocol::HardwareVersion())
-    {
         node_info_.hardware_version = version;
-    }
 }
 
 }
