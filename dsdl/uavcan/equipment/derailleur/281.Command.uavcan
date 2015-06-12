@@ -15,4 +15,4 @@ uint4 command_type
 #
 # Value of the above type
 #
-uint8 command_value
+int8 command_value
