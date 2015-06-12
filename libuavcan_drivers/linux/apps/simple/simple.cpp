@@ -42,7 +42,9 @@ const char *const UavcanSimple::NAME = "simple";
 
 UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
-	_pub_derailleur_cmd(node)
+	_pub_derailleur_cmd(node),
+	_pub_output_cmd(node),
+	_sub_ambient(node)
 {
 }
 
@@ -51,6 +53,13 @@ int UavcanSimple::init()
 	int res;
 
 	res = _sub_ctrl_cmd.start(SimpleCbBinder(this, &UavcanSimple::simple_sub_cb));
+
+	if (res < 0) {
+		fprintf(stderr, "failed to start uavcan sub: %d", res);
+		return res;
+	}
+
+	res = _sub_ambient.start(AnalogCbBinder(this, &UavcanSimple::ambient_sub_cb));
 
 	if (res < 0) {
 		fprintf(stderr, "failed to start uavcan sub: %d", res);
@@ -110,3 +119,13 @@ void UavcanSimple::simple_sub_cb(const
 	}
 }
 
+void UavcanSimple::ambient_sub_cb(const
+		uavcan::ReceivedDataStructure<uavcan::simple::Analog> &msg)
+{
+	uavcan::simple::Output msg_out;
+
+	msg_out.out[0] = msg.analog >> 4;
+	msg_out.out_mask = 0x1;
+
+	_pub_output_cmd.broadcast(msg_out);
+}

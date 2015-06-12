@@ -41,6 +41,8 @@
 #include <uavcan/uavcan.hpp>
 #include <uavcan/equipment/ctrl/Command.hpp>
 #include <uavcan/equipment/derailleur/Command.hpp>
+#include <uavcan/simple/Analog.hpp>
+#include <uavcan/simple/Output.hpp>
 
 class RingBuffer;
 
@@ -57,6 +59,7 @@ public:
 
 private:
 	void simple_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg);
+	void ambient_sub_cb(const uavcan::ReceivedDataStructure<uavcan::simple::Analog> &msg);
 
 	typedef uavcan::MethodBinder < UavcanSimple *,
 		void (UavcanSimple::*)
@@ -65,6 +68,15 @@ private:
 
 	uavcan::Subscriber<uavcan::equipment::ctrl::Command, SimpleCbBinder> _sub_ctrl_cmd;
 	uavcan::Publisher<uavcan::equipment::derailleur::Command>			 _pub_derailleur_cmd;
+	uavcan::Publisher<uavcan::simple::Output>		                  	 _pub_output_cmd;
+
+	typedef uavcan::MethodBinder < UavcanSimple *,
+		void (UavcanSimple::*)
+		(const uavcan::ReceivedDataStructure<uavcan::simple::Analog> &) >
+		AnalogCbBinder;
+
+	uavcan::Subscriber<uavcan::simple::Analog, AnalogCbBinder> _sub_ambient;
+
 
 	uint32_t value;
 };
