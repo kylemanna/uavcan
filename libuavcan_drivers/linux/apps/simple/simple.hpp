@@ -40,6 +40,7 @@
 
 #include <uavcan/uavcan.hpp>
 #include <uavcan/equipment/ctrl/Command.hpp>
+#include <uavcan/equipment/derailleur/Command.hpp>
 
 class RingBuffer;
 
@@ -63,7 +64,7 @@ private:
 		SimpleCbBinder;
 
 	uavcan::Subscriber<uavcan::equipment::ctrl::Command, SimpleCbBinder> _sub_ctrl_cmd;
-	uavcan::Publisher<uavcan::equipment::ctrl::Command>			         _pub_ctrl_cmd;
+	uavcan::Publisher<uavcan::equipment::derailleur::Command>			 _pub_derailleur_cmd;
 
 	uint32_t value;
 };
