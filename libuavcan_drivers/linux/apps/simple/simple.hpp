@@ -47,43 +47,58 @@
 #include <uavcan/simple/Analog.hpp>
 #include <uavcan/simple/Output.hpp>
 
-class RingBuffer;
 
-class SimpleOutput : uavcan::TimerBase
+class SimpleSignalOutput : uavcan::TimerBase
 {
-	bool					enabled;
-	uint8_t					last;
-	uavcan::MonotonicTime	enableTime;
+	bool					enable;
+	bool					flash;
 	uavcan::INode 			&node;
+	const uint8_t			id;
 	const uint8_t			idx;
+	const uint8_t			duty_off;
+	const uint8_t			duty_on;
+	uint8_t					last;
+
 	uavcan::Publisher<uavcan::simple::Output> _pub_output_cmd;
 
 public:
 
-	SimpleOutput(uavcan::INode &node, uint8_t idx)
-	: 	uavcan::TimerBase::TimerBase(node),
-		node(node), idx(idx), _pub_output_cmd(node)
+	SimpleSignalOutput(uavcan::INode &node, uint8_t id, uint8_t idx, uint8_t duty_off, uint8_t duty_on)
+	: 	uavcan::TimerBase::TimerBase(node), enable(false), flash(false),
+		node(node), id(id), idx(idx),
+		duty_off(duty_off), duty_on(duty_on), last(0),
+		_pub_output_cmd(node)
 	{
 	}
 
-	void toggle() {
-		if (!enabled) {
-			enableTime = node.getMonotonicTime();
-			last = 1;
-			sendOutputCmd((last) ? 0xff : 0);
+	void set(bool value)
+	{
+		enable = value;
+		if (!flash) {
+			last = (value) ? duty_on : duty_off;
+			sendOutputCmd(last);
+		}
+	}
+
+	void toggleFlash() {
+		if (!flash) {
+			flash = true;
+			last = (last == duty_on) ? duty_off : duty_on;;
+			sendOutputCmd(last);
 			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
 		} else {
 			stop();
-			sendOutputCmd(0);
+			flash = false;
+			set(enable);
 			/* What if timer fires after this, does light turn back on */
 
 		}
-		enabled = !enabled;
 	}
 
 private:
 	void sendOutputCmd(uint8_t val) {
 		uavcan::simple::Output msg_out;
+		msg_out.output_id = id;
 		msg_out.out_mask = 1<<idx;
 		msg_out.out[idx] = val;
 		_pub_output_cmd.broadcast(msg_out);
@@ -91,15 +106,15 @@ private:
 	void handleTimerEvent(const uavcan::TimerEvent& event) {
 		(void)event;
 
-		if (enabled)
-			sendOutputCmd((last) ? 0 : 0xff);
-		else
-			sendOutputCmd(0);
-
-		last = !last;
+		if (flash) {
+			last = (last == duty_on) ? duty_off : duty_on;
+			sendOutputCmd(last);
+		} else {
+			set(enable);
+		};
 	}
-
 };
+
 
 class UavcanSimple : uavcan::Noncopyable
 {
@@ -157,13 +172,13 @@ private:
 	UavcanSimple::ctrl_decode_t ctrl_decode[5] {
 		{ 0, 0, 0, 0, SHIFT_DWN | SWITCH1, &UavcanSimple::shift_handler },
 		{ 0, 0, 0, 0, SHIFT_UP  | SWITCH2, &UavcanSimple::shift_handler },
-		{ 0, 0, 0, 0, SIGNAL_LEFT, 	       &UavcanSimple::signal_handler },
-		{ 0, 0, 0, 0, SIGNAL_RIGHT,        &UavcanSimple::signal_handler },
-		{ 0, 0, 0, 0, SIGNAL_BRAKE,        &UavcanSimple::signal_handler },
+		{ 0, 0, 0, 0, SIGNAL_LEFT | SIGNAL_RIGHT | SIGNAL_BRAKE, &UavcanSimple::signal_handler },
 	};
 
 	void shift_handler(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg);
 	void signal_handler(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg);
+
+	uint8_t singal_value_last;
 
     /**
      * Implement this method in your class to receive callbacks.
@@ -171,7 +186,8 @@ private:
     void handleTimerEvent(const uavcan::TimerEvent& event);
 
     /* Output state */
-    SimpleOutput _signal_left;
-    SimpleOutput _signal_right;
-    SimpleOutput _signal_brake;
+    SimpleSignalOutput _sig_front_left;
+    SimpleSignalOutput _sig_front_right;
+    SimpleSignalOutput _sig_rear_left;
+    SimpleSignalOutput _sig_rear_right;
 };

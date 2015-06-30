@@ -40,14 +40,24 @@
 
 const char *const UavcanSimple::NAME = "simple";
 
+/*
+ * Assume
+ * output_id = 0x1 = front with headlight, signal left, signal right
+ * output_id = 0x2 = rear with combined brake and signal left, signal right
+ *
+ *
+ */
+
+
 UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
 	_pub_derailleur_cmd(node),
 	_pub_output_cmd(node),
 	_sub_ambient(node),
-	_signal_left(node, 0x2),
-	_signal_right(node, 0x3),
-	_signal_brake(node, 0x4)
+	_sig_front_left( node, 1, 0x2, 0x08, 0xff),
+	_sig_front_right(node, 1, 0x3, 0x08, 0xff),
+	_sig_rear_left(  node, 2, 0x2, 0x40, 0xff),
+	_sig_rear_right( node, 2, 0x3, 0x40, 0xff)
 {
 }
 
@@ -68,6 +78,11 @@ int UavcanSimple::init()
 		fprintf(stderr, "failed to start uavcan sub: %d", res);
 		return res;
 	}
+
+	_sig_front_left.set(false);
+	_sig_front_right.set(false);
+	_sig_rear_left.set(false);
+	_sig_rear_right.set(false);
 
 	return 0;
 }
@@ -93,15 +108,23 @@ void UavcanSimple::shift_handler(const uavcan::ReceivedDataStructure<uavcan::equ
 
 void UavcanSimple::signal_handler(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg)
 {
+	if (singal_value_last == msg.value_mask)
+		return;
+
 	if (msg.value_mask & (SIGNAL_LEFT)) {
-		_signal_left.toggle();
+		_sig_front_left.toggleFlash();
+		_sig_rear_left.toggleFlash();
 	}
+
 	if (msg.value_mask & (SIGNAL_RIGHT)) {
-		_signal_right.toggle();
+		_sig_front_right.toggleFlash();
+		_sig_rear_right.toggleFlash();
 	}
-	if (msg.value_mask & (SIGNAL_BRAKE)) {
-		_signal_brake.toggle();
-	}
+
+	_sig_rear_left.set( msg.value_mask & (SIGNAL_BRAKE));
+	_sig_rear_right.set(msg.value_mask & (SIGNAL_BRAKE));
+
+	singal_value_last = msg.value_mask;
 }
 
 #ifndef ARRAY_SIZE
