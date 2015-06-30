@@ -83,13 +83,14 @@ public:
 	void toggleFlash() {
 		if (!flash) {
 			flash = true;
-			last = (last == duty_on) ? duty_off : duty_on;;
+			last = (last == duty_on) ? duty_off : duty_on;
 			sendOutputCmd(last);
 			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
 		} else {
 			stop();
 			flash = false;
-			set(enable);
+			last = (enable) ? duty_off : duty_on;
+			sendOutputCmd(last);
 			/* What if timer fires after this, does light turn back on */
 
 		}
@@ -138,7 +139,6 @@ private:
 
 	uavcan::Subscriber<uavcan::equipment::ctrl::Command, SimpleCbBinder> _sub_ctrl_cmd;
 	uavcan::Publisher<uavcan::equipment::derailleur::Command>			 _pub_derailleur_cmd;
-	uavcan::Publisher<uavcan::simple::Output>		                  	 _pub_output_cmd;
 
 	typedef uavcan::MethodBinder < UavcanSimple *,
 		void (UavcanSimple::*)
@@ -170,8 +170,7 @@ private:
 	};
 
 	UavcanSimple::ctrl_decode_t ctrl_decode[5] {
-		{ 0, 0, 0, 0, SHIFT_DWN | SWITCH1, &UavcanSimple::shift_handler },
-		{ 0, 0, 0, 0, SHIFT_UP  | SWITCH2, &UavcanSimple::shift_handler },
+		{ 0, 0, 0, 0, SHIFT_DWN |SHIFT_UP| SWITCH1 | SWITCH2, &UavcanSimple::shift_handler },
 		{ 0, 0, 0, 0, SIGNAL_LEFT | SIGNAL_RIGHT | SIGNAL_BRAKE, &UavcanSimple::signal_handler },
 	};
 
@@ -186,6 +185,7 @@ private:
     void handleTimerEvent(const uavcan::TimerEvent& event);
 
     /* Output state */
+    SimpleSignalOutput _headlight;
     SimpleSignalOutput _sig_front_left;
     SimpleSignalOutput _sig_front_right;
     SimpleSignalOutput _sig_rear_left;

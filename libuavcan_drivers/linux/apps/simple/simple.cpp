@@ -52,12 +52,12 @@ const char *const UavcanSimple::NAME = "simple";
 UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
 	_pub_derailleur_cmd(node),
-	_pub_output_cmd(node),
 	_sub_ambient(node),
-	_sig_front_left( node, 1, 0x2, 0x08, 0xff),
-	_sig_front_right(node, 1, 0x3, 0x08, 0xff),
-	_sig_rear_left(  node, 2, 0x2, 0x40, 0xff),
-	_sig_rear_right( node, 2, 0x3, 0x40, 0xff)
+	_headlight(      node, 1, 0x0, 0x04, 0xff),
+	_sig_front_left( node, 1, 0x1, 0x04, 0xff),
+	_sig_front_right(node, 1, 0x2, 0x04, 0xff),
+	_sig_rear_left(  node, 2, 0x1, 0x40, 0xff),
+	_sig_rear_right( node, 2, 0x2, 0x40, 0xff)
 {
 }
 
@@ -79,6 +79,7 @@ int UavcanSimple::init()
 		return res;
 	}
 
+	_headlight.set(false);
 	_sig_front_left.set(false);
 	_sig_front_right.set(false);
 	_sig_rear_left.set(false);
@@ -121,8 +122,10 @@ void UavcanSimple::signal_handler(const uavcan::ReceivedDataStructure<uavcan::eq
 		_sig_rear_right.toggleFlash();
 	}
 
-	_sig_rear_left.set( msg.value_mask & (SIGNAL_BRAKE));
-	_sig_rear_right.set(msg.value_mask & (SIGNAL_BRAKE));
+	const bool brake = (msg.value_mask & SIGNAL_BRAKE) != 0;
+
+	_sig_rear_left.set(brake);
+	_sig_rear_right.set(brake);
 
 	singal_value_last = msg.value_mask;
 }
@@ -155,10 +158,6 @@ void UavcanSimple::simple_sub_cb(const
 void UavcanSimple::ambient_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::simple::Analog> &msg)
 {
-	uavcan::simple::Output msg_out;
-
-	msg_out.out[0] = msg.analog >> 4;
-	msg_out.out_mask = 0x1;
-
-	_pub_output_cmd.broadcast(msg_out);
+	bool on = msg.analog > 2048;
+	_headlight.set(on);
 }
