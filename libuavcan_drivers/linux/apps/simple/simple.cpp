@@ -44,7 +44,10 @@ UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
 	_pub_derailleur_cmd(node),
 	_pub_output_cmd(node),
-	_sub_ambient(node)
+	_sub_ambient(node),
+	_signal_left(node, 0x2),
+	_signal_right(node, 0x3),
+	_signal_brake(node, 0x4)
 {
 }
 
@@ -69,35 +72,47 @@ int UavcanSimple::init()
 	return 0;
 }
 
-typedef struct {
-	uint8_t id;
-	uint8_t id_mask;
-	uint8_t src;
-	uint8_t src_mask;
-	uint8_t value_mask;
-	int8_t direction;
-} ctrl_decode_t;
-
-static ctrl_decode_t ctrl_decode[] {
-		{ 0, 0, 0, 0, 0x42,  1 }, /* up shift */
-		{ 0, 0, 0, 0, 0x21, -1 }  /* down shift */
-};
-
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(a)  sizeof(a)/(sizeof(a[0]))
-#endif
-
-void UavcanSimple::simple_sub_cb(const
-		uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg)
+void UavcanSimple::shift_handler(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg)
 {
-	value = msg.value_mask;
-
 	uavcan::equipment::derailleur::Command msg_out;
 
 	msg_out.derailleur_id = 0x0;
 	msg_out.command_type = msg_out.COMMAND_TYPE_RELATIVE;
 	msg_out.command_value = 0;
 
+	if (msg.value_mask & (SHIFT_UP | SWITCH2))
+		msg_out.command_value = 1;
+	else if (msg.value_mask &  (SHIFT_DWN | SWITCH1))
+		msg_out.command_value = -1;
+
+	if (msg_out.command_value) {
+		_pub_derailleur_cmd.broadcast(msg_out);
+	}
+}
+
+
+void UavcanSimple::signal_handler(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg)
+{
+	if (msg.value_mask & (SIGNAL_LEFT)) {
+		_signal_left.toggle();
+	}
+	if (msg.value_mask & (SIGNAL_RIGHT)) {
+		_signal_right.toggle();
+	}
+	if (msg.value_mask & (SIGNAL_BRAKE)) {
+		_signal_brake.toggle();
+	}
+}
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a)  sizeof(a)/(sizeof(a[0]))
+#endif
+
+#define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
+
+void UavcanSimple::simple_sub_cb(const
+		uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg)
+{
 	/* Iterate over decode array to determine value */
 	for (size_t i = 0; i < ARRAY_SIZE(ctrl_decode); i++) {
 		const ctrl_decode_t *p = &ctrl_decode[i];
@@ -108,14 +123,9 @@ void UavcanSimple::simple_sub_cb(const
 		if ((msg.getSrcNodeID().get() & p->src_mask) != (p->src & p->src_mask))
 			continue;
 
-		if (msg.value_mask & p->value_mask) {
-			msg_out.command_value = p->direction;
-			break;
+		if (p->handler) {
+			CALL_MEMBER_FN(*this, p->handler)(msg);
 		}
-	}
-
-	if (msg_out.command_value) {
-		_pub_derailleur_cmd.broadcast(msg_out);
 	}
 }
 
