@@ -158,6 +158,8 @@ void UavcanSimple::simple_sub_cb(const
 void UavcanSimple::ambient_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::simple::Analog> &msg)
 {
-	bool on = msg.analog > 2048;
-	_headlight.set(on);
+	if (msg.analog_id == 0x1) {
+		const bool on = msg.analog > 2048;
+		_headlight.set(on);
+	}
 }
