@@ -89,7 +89,7 @@ public:
 		} else {
 			stop();
 			flash = false;
-			last = (enable) ? duty_off : duty_on;
+			last = (enable) ? duty_on : duty_off;
 			sendOutputCmd(last);
 			/* What if timer fires after this, does light turn back on */
 
