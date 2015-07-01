@@ -37,8 +37,6 @@
 
 #pragma once
 
-#include <mutex>
-
 #include <uavcan/uavcan.hpp>
 #include <uavcan/time.hpp>
 
@@ -63,10 +61,10 @@ class SimpleSignalOutput : uavcan::TimerBase
 
 public:
 
-	SimpleSignalOutput(uavcan::INode &node, uint8_t id, uint8_t idx, uint8_t duty_off, uint8_t duty_on)
-	: 	uavcan::TimerBase::TimerBase(node), enable(false), flash(false),
-		node(node), id(id), idx(idx),
-		duty_off(duty_off), duty_on(duty_on), last(0),
+	SimpleSignalOutput(uavcan::INode &arg_node, uint8_t arg_id, uint8_t arg_idx, uint8_t off, uint8_t on)
+	: 	uavcan::TimerBase::TimerBase(arg_node), enable(false), flash(false),
+		node(arg_node), id(arg_id), idx(arg_idx),
+		duty_off(off), duty_on(on), last(0),
 		_pub_output_cmd(node)
 	{
 	}
