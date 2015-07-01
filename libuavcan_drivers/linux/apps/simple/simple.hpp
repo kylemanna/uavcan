@@ -45,57 +45,75 @@
 #include <uavcan/simple/Analog.hpp>
 #include <uavcan/simple/Output.hpp>
 
-
 class SimpleSignalOutput : uavcan::TimerBase
 {
-	bool					enable;
-	bool					flash;
+private:
 	uavcan::INode 			&node;
 	const uint8_t			id;
 	const uint8_t			idx;
-	const uint8_t			duty_off;
+	const uint8_t			duty_night;
 	const uint8_t			duty_on;
 	uint8_t					last;
+
+	bool					enabled;
+	bool					flash;
+	bool					night;
 
 	uavcan::Publisher<uavcan::simple::Output> _pub_output_cmd;
 
 public:
 
-	SimpleSignalOutput(uavcan::INode &arg_node, uint8_t arg_id, uint8_t arg_idx, uint8_t off, uint8_t on)
-	: 	uavcan::TimerBase::TimerBase(arg_node), enable(false), flash(false),
+	SimpleSignalOutput(uavcan::INode &arg_node, uint8_t arg_id, uint8_t arg_idx, uint8_t arg_night, uint8_t on)
+	: 	uavcan::TimerBase::TimerBase(arg_node),
 		node(arg_node), id(arg_id), idx(arg_idx),
-		duty_off(off), duty_on(on), last(0),
+		duty_night(night), duty_on(on), last(0),
+		enabled(false), flash(false), night(false),
 		_pub_output_cmd(node)
 	{
 	}
 
-	void set(bool value)
+	void setNight(bool newNight)
 	{
-		enable = value;
-		if (!flash) {
-			last = (value) ? duty_on : duty_off;
-			sendOutputCmd(last);
-		}
+		if (night == newNight)
+			return;
+
+		night = newNight;
+		sendOutputCmd();
+	}
+	void setEnable(bool newEnable)
+	{
+		if (enabled == newEnable)
+			return;
+
+		enabled = newEnable;
+		sendOutputCmd();
 	}
 
 	void toggleFlash() {
-		if (!flash) {
-			flash = true;
-			last = (last == duty_on) ? duty_off : duty_on;
-			sendOutputCmd(last);
-			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
-		} else {
+		if (flash) {
 			stop();
-			flash = false;
-			last = (enable) ? duty_on : duty_off;
-			sendOutputCmd(last);
-			/* What if timer fires after this, does light turn back on */
-
+		} else {
+			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
 		}
+		flash = !flash;
+		sendOutputCmd();
 	}
 
 private:
-	void sendOutputCmd(uint8_t val) {
+	void sendOutputCmd() {
+
+		uint8_t val;
+
+		uint8_t off = (night) ? duty_night : 0;
+
+		if (flash) {
+			val = (last == 0xff) ? off : 0xff;
+		} else {
+			val = (enabled) ? 0xff : off;
+		}
+
+
+		last = val;
 		uavcan::simple::Output msg_out;
 		msg_out.output_id = id;
 		msg_out.out_mask = 1<<idx;
@@ -104,13 +122,7 @@ private:
 	}
 	void handleTimerEvent(const uavcan::TimerEvent& event) {
 		(void)event;
-
-		if (flash) {
-			last = (last == duty_on) ? duty_off : duty_on;
-			sendOutputCmd(last);
-		} else {
-			set(enable);
-		};
+		sendOutputCmd();
 	}
 };
 

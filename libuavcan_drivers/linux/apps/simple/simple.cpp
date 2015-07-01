@@ -53,11 +53,11 @@ UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
 	_pub_derailleur_cmd(node),
 	_sub_ambient(node),
-	_headlight(      node, 1, 0x0, 0x04, 0xff),
+	_headlight(      node, 1, 0x0, 0xff, 0xff),
 	_sig_front_left( node, 1, 0x1, 0x04, 0xff),
 	_sig_front_right(node, 1, 0x2, 0x04, 0xff),
-	_sig_rear_left(  node, 2, 0x1, 0x40, 0xff),
-	_sig_rear_right( node, 2, 0x2, 0x40, 0xff)
+	_sig_rear_left(  node, 2, 0x1, 0x20, 0xff),
+	_sig_rear_right( node, 2, 0x2, 0x20, 0xff)
 {
 }
 
@@ -79,11 +79,11 @@ int UavcanSimple::init()
 		return res;
 	}
 
-	_headlight.set(false);
-	_sig_front_left.set(false);
-	_sig_front_right.set(false);
-	_sig_rear_left.set(false);
-	_sig_rear_right.set(false);
+	_headlight.setEnable(false);
+	_sig_front_left.setEnable(false);
+	_sig_front_right.setEnable(false);
+	_sig_rear_left.setEnable(false);
+	_sig_rear_right.setEnable(false);
 
 	return 0;
 }
@@ -122,10 +122,10 @@ void UavcanSimple::signal_handler(const uavcan::ReceivedDataStructure<uavcan::eq
 		_sig_rear_right.toggleFlash();
 	}
 
-	const bool brake = (msg.value_mask & SIGNAL_BRAKE) != 0;
+	bool brake = (msg.value_mask & SIGNAL_BRAKE) ? true : false;
 
-	_sig_rear_left.set(brake);
-	_sig_rear_right.set(brake);
+	_sig_rear_left.setEnable(brake);
+	_sig_rear_right.setEnable(brake);
 
 	singal_value_last = msg.value_mask;
 }
@@ -159,7 +159,12 @@ void UavcanSimple::ambient_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::simple::Analog> &msg)
 {
 	if (msg.analog_id == 0x1) {
-		const bool on = msg.analog > 2048;
-		_headlight.set(on);
+		bool night = (msg.analog > 0xd00) ? true : false;
+
+		_headlight.setNight(night);
+		_sig_front_left.setNight(night);
+		_sig_front_right.setNight(night);
+		_sig_rear_left.setNight(night);
+		_sig_rear_right.setNight(night);
 	}
 }
