@@ -48,54 +48,54 @@
 class SimpleSignalOutput : uavcan::TimerBase
 {
 private:
-	uavcan::INode 			&node;
-	const uint8_t			id;
-	const uint8_t			idx;
-	const uint8_t			duty_night;
-	const uint8_t			duty_on;
-	uint8_t					last;
+	uavcan::INode 			&_node;
+	const uint8_t			_id;
+	const uint8_t			_idx;
+	const uint8_t			_duty_night;
+	const uint8_t			_duty_on;
+	uint8_t					_last;
 
-	bool					enabled;
-	bool					flash;
-	bool					night;
+	bool					_enabled;
+	bool					_flash;
+	bool					_night;
 
 	uavcan::Publisher<uavcan::simple::Output> _pub_output_cmd;
 
 public:
 
-	SimpleSignalOutput(uavcan::INode &arg_node, uint8_t arg_id, uint8_t arg_idx, uint8_t arg_night, uint8_t on)
-	: 	uavcan::TimerBase::TimerBase(arg_node),
-		node(arg_node), id(arg_id), idx(arg_idx),
-		duty_night(night), duty_on(on), last(0),
-		enabled(false), flash(false), night(false),
-		_pub_output_cmd(node)
+	SimpleSignalOutput(uavcan::INode &node, uint8_t id, uint8_t idx, uint8_t night, uint8_t on)
+	: 	uavcan::TimerBase::TimerBase(node),
+		_node(node), _id(id), _idx(idx),
+		_duty_night(night), _duty_on(on), _last(0),
+		_enabled(false), _flash(false), _night(false),
+		_pub_output_cmd(_node)
 	{
 	}
 
 	void setNight(bool newNight)
 	{
-		if (night == newNight)
+		if (_night == newNight)
 			return;
 
-		night = newNight;
+		_night = newNight;
 		sendOutputCmd();
 	}
 	void setEnable(bool newEnable)
 	{
-		if (enabled == newEnable)
+		if (_enabled == newEnable)
 			return;
 
-		enabled = newEnable;
+		_enabled = newEnable;
 		sendOutputCmd();
 	}
 
 	void toggleFlash() {
-		if (flash) {
+		if (_flash) {
 			stop();
 		} else {
 			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
 		}
-		flash = !flash;
+		_flash = !_flash;
 		sendOutputCmd();
 	}
 
@@ -104,20 +104,20 @@ private:
 
 		uint8_t val;
 
-		uint8_t off = (night) ? duty_night : 0;
+		uint8_t off = (_night) ? _duty_night : 0;
 
-		if (flash) {
-			val = (last == 0xff) ? off : 0xff;
+		if (_flash) {
+			val = (_last == 0xff) ? off : 0xff;
 		} else {
-			val = (enabled) ? 0xff : off;
+			val = (_enabled) ? 0xff : off;
 		}
 
 
-		last = val;
+		_last = val;
 		uavcan::simple::Output msg_out;
-		msg_out.output_id = id;
-		msg_out.out_mask = 1<<idx;
-		msg_out.out[idx] = val;
+		msg_out.output_id = _id;
+		msg_out.out_mask = 1<<_idx;
+		msg_out.out[_idx] = val;
 		_pub_output_cmd.broadcast(msg_out);
 	}
 	void handleTimerEvent(const uavcan::TimerEvent& event) {
