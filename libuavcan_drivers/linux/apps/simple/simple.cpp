@@ -175,3 +175,100 @@ void UavcanSimple::ambient_sub_cb(const
 		_rear.setNight(night, true);
 	}
 }
+
+
+bool SimpleOutput::sendOutputCmd(bool force)
+{
+	bool updated = false;
+	bool invert_flash_last = false;
+	uavcan::simple::Output msg_out;
+	msg_out.output_id = _id;
+
+	for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
+
+		uint8_t val;
+		uint8_t off = (_night) ? _out[i]._duty_night : _out[i]._duty_off;
+		uint8_t on = _out[i]._duty_on;
+
+		if (_out[i]._flash) {
+			val = (_flash_last && _out[i]._last == on) ? off : on;
+			invert_flash_last = true;
+		} else {
+			val = (_out[i]._enabled) ? on : off;
+		}
+
+		if (_out[i]._last != val || force) {
+			updated = true;
+			_out[i]._last = val;
+
+			msg_out.out_mask |= 1<<_out[i]._idx;
+			msg_out.out[_out[i]._idx] = val;
+		}
+	}
+
+	if (invert_flash_last)
+		_flash_last = !_flash_last;
+
+	if (updated)
+		_pub_output_cmd.broadcast(msg_out);
+
+	return true;
+}
+
+
+bool SimpleOutput::setNight(bool newNight, bool sendNow)
+{
+	_night = newNight;
+
+	if (sendNow) {
+		return sendOutputCmd();
+	}
+	return false;
+}
+
+
+bool SimpleOutput::setEnable(uint8_t idx, bool newEnable, bool sendNow)
+{
+	bool updated = _out[idx].setEnable(newEnable);
+
+	if (updated && sendNow) {
+		sendOutputCmd();
+	}
+	return updated;
+}
+
+
+void SimpleOutput::toggleFlash(int idx)
+{
+	_out[idx].toggleFlash();
+
+	bool flash = false;
+	for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
+		if (_out[i]._flash) {
+			flash = true;
+			break;
+		}
+	}
+
+	if (flash != _flash) {
+		_flash = flash;
+
+		if (flash) {
+			startPeriodic(uavcan::MonotonicDuration::fromMSec(200));
+		} else {
+			stop();
+		}
+		sendOutputCmd();
+	}
+}
+
+void SimpleOutput::handleTimerEvent(const uavcan::TimerEvent& event)
+{
+	(void)event;
+	sendOutputCmd();
+}
+
+void SimpleOutput::config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on)
+{
+	_out[idx].init(idx, off, night, on);
+}

@@ -56,11 +56,10 @@ public:
 
 	bool			_enabled;
 	bool			_flash;
-	bool			_night;
 
 	SimpleOutputSignal()
-	:	_idx(0), _duty_night(0), _duty_on(0), _last(0),
-		_enabled(false), _flash(false), _night(false)
+	:	_idx(0), _duty_off(0), _duty_night(0), _duty_on(0), _last(0),
+		_enabled(false), _flash(false)
 	{
 	}
 
@@ -70,15 +69,6 @@ public:
 		_duty_off = off;
 		_duty_night = night;
 		_duty_on = on;
-	}
-
-	bool setNight(bool newNight)
-	{
-		if (_night == newNight)
-			return false;
-
-		_night = newNight;
-		return true;
 	}
 
 	bool setEnable(bool newEnable)
@@ -109,117 +99,22 @@ private:
 	SimpleOutputSignal		_out[4];
 	bool					_flash;
 	bool					_flash_last;
-
+	bool					_night;
 
 public:
 	SimpleOutput(uavcan::INode &node, uint8_t id)
-	: 	uavcan::TimerBase::TimerBase(node), _pub_output_cmd(node), _id(id)
-	{
-	}
+	: 	uavcan::TimerBase::TimerBase(node), _pub_output_cmd(node),
+		_id(id), _flash(false), _flash_last(false), _night(false)
+	{ }
 
-	bool sendOutputCmd(bool force)
-	{
-		bool updated = false;
-		bool invert_flash_last = false;
-		uavcan::simple::Output msg_out;
-		msg_out.output_id = _id;
+	bool sendOutputCmd(bool force);
+	bool sendOutputCmd(void) { return sendOutputCmd(false); }
 
-		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
-
-			uint8_t val;
-			uint8_t off = (_out[i]._night) ? _out[i]._duty_night : _out[i]._duty_off;
-			uint8_t on = _out[i]._duty_on;
-
-			if (_out[i]._flash) {
-				val = (_flash_last && _out[i]._last == on) ? off : on;
-				invert_flash_last = true;
-			} else {
-				val = (_out[i]._enabled) ? on : off;
-			}
-
-			if (_out[i]._last != val || force) {
-				updated = true;
-				_out[i]._last = val;
-
-				msg_out.out_mask |= 1<<_out[i]._idx;
-				msg_out.out[_out[i]._idx] = val;
-			}
-		}
-
-		if (invert_flash_last)
-			_flash_last = !_flash_last;
-
-		if (updated)
-			_pub_output_cmd.broadcast(msg_out);
-
-		return true;
-	}
-
-	bool sendOutputCmd(void) {
-		sendOutputCmd(false);
-		return true;
-	}
-
-	void config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on)
-	{
-		_out[idx].init(idx, off, night, on);
-	}
-
-	void handleTimerEvent(const uavcan::TimerEvent& event)
-	{
-		(void)event;
-		sendOutputCmd();
-	}
-
-	bool setNight(bool newNight, bool sendNow)
-	{
-		bool updated = false;
-
-		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
-			if (_out[i].setNight(newNight)) {
-				updated = true;
-			}
-		}
-
-		if (updated && sendNow) {
-			sendOutputCmd();
-		}
-		return updated;
-	}
-
-	bool setEnable(uint8_t idx, bool newEnable, bool sendNow)
-	{
-		bool updated = _out[idx].setEnable(newEnable);
-
-		if (updated && sendNow) {
-			sendOutputCmd();
-		}
-		return updated;
-	}
-
-	void toggleFlash(int idx)
-	{
-		_out[idx].toggleFlash();
-
-		bool flash = false;
-		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
-			if (_out[i]._flash) {
-				flash = true;
-				break;
-			}
-		}
-
-		if (flash != _flash) {
-			_flash = flash;
-
-			if (flash) {
-				startPeriodic(uavcan::MonotonicDuration::fromMSec(200));
-			} else {
-				stop();
-			}
-			sendOutputCmd();
-		}
-	}
+	void config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on);
+	void handleTimerEvent(const uavcan::TimerEvent& event);
+	bool setNight(bool newNight, bool sendNow);
+	bool setEnable(uint8_t idx, bool newEnable, bool sendNow);
+	void toggleFlash(int idx);
 };
 
 class UavcanSimple : uavcan::Noncopyable
