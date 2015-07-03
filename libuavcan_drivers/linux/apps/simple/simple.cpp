@@ -48,16 +48,22 @@ const char *const UavcanSimple::NAME = "simple";
  *
  */
 
+/* Board location */
+#define OUT_UNDEF      0
+#define OUT_FRONT      1
+#define OUT_REAR       2
+
+/* Index on board */
+#define OUT_CENTER_ID  0
+#define OUT_LEFT_ID    1
+#define OUT_RIGHT_ID   2
 
 UavcanSimple::UavcanSimple(uavcan::INode &node) :
 	_sub_ctrl_cmd(node),
 	_pub_derailleur_cmd(node),
 	_sub_ambient(node),
-	_headlight(      node, 1, 0x0, 0xff, 0xff),
-	_sig_front_left( node, 1, 0x1, 0x04, 0xff),
-	_sig_front_right(node, 1, 0x2, 0x04, 0xff),
-	_sig_rear_left(  node, 2, 0x1, 0x20, 0xff),
-	_sig_rear_right( node, 2, 0x2, 0x20, 0xff)
+	_front(node, OUT_FRONT),
+	_rear(node, OUT_REAR)
 {
 }
 
@@ -79,11 +85,15 @@ int UavcanSimple::init()
 		return res;
 	}
 
-	_headlight.setEnable(false);
-	_sig_front_left.setEnable(false);
-	_sig_front_right.setEnable(false);
-	_sig_rear_left.setEnable(false);
-	_sig_rear_right.setEnable(false);
+	_front.config(OUT_CENTER_ID, 0x0, 0xff, 0xff);
+	_front.config(OUT_LEFT_ID,   0x0, 0x04, 0xff);
+	_front.config(OUT_RIGHT_ID,  0x0, 0x04, 0xff);
+
+	_rear.config(OUT_LEFT_ID,    0x0, 0x20, 0xff);
+	_rear.config(OUT_RIGHT_ID,   0x0, 0x20, 0xff);
+
+	_front.sendOutputCmd(true);
+	_rear.sendOutputCmd(true);
 
 	return 0;
 }
@@ -113,19 +123,19 @@ void UavcanSimple::signal_handler(const uavcan::ReceivedDataStructure<uavcan::eq
 		return;
 
 	if (msg.value_mask & (SIGNAL_LEFT)) {
-		_sig_front_left.toggleFlash();
-		_sig_rear_left.toggleFlash();
+		_front.toggleFlash(OUT_LEFT_ID);
+		_rear.toggleFlash(OUT_LEFT_ID);
 	}
 
 	if (msg.value_mask & (SIGNAL_RIGHT)) {
-		_sig_front_right.toggleFlash();
-		_sig_rear_right.toggleFlash();
+		_front.toggleFlash(OUT_RIGHT_ID);
+		_rear.toggleFlash(OUT_RIGHT_ID);
 	}
 
 	bool brake = (msg.value_mask & SIGNAL_BRAKE) ? true : false;
 
-	_sig_rear_left.setEnable(brake);
-	_sig_rear_right.setEnable(brake);
+	_rear.setEnable(OUT_LEFT_ID, brake, true);
+	_rear.setEnable(OUT_RIGHT_ID, brake, true);
 
 	singal_value_last = msg.value_mask;
 }
@@ -161,10 +171,7 @@ void UavcanSimple::ambient_sub_cb(const
 	if (msg.analog_id == 0x1) {
 		bool night = (msg.analog > 0xd00) ? true : false;
 
-		_headlight.setNight(night);
-		_sig_front_left.setNight(night);
-		_sig_front_right.setNight(night);
-		_sig_rear_left.setNight(night);
-		_sig_rear_right.setNight(night);
+		_front.setNight(night, true);
+		_rear.setNight(night, true);
 	}
 }

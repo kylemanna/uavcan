@@ -45,87 +45,182 @@
 #include <uavcan/simple/Analog.hpp>
 #include <uavcan/simple/Output.hpp>
 
-class SimpleSignalOutput : uavcan::TimerBase
+class SimpleOutputSignal : uavcan::Noncopyable
 {
-private:
-	uavcan::INode 			&_node;
-	const uint8_t			_id;
-	const uint8_t			_idx;
-	const uint8_t			_duty_night;
-	const uint8_t			_duty_on;
-	uint8_t					_last;
-
-	bool					_enabled;
-	bool					_flash;
-	bool					_night;
-
-	uavcan::Publisher<uavcan::simple::Output> _pub_output_cmd;
-
 public:
+	uint8_t			_idx;
+	uint8_t			_duty_off;
+	uint8_t			_duty_night;
+	uint8_t			_duty_on;
+	uint8_t			_last;
 
-	SimpleSignalOutput(uavcan::INode &node, uint8_t id, uint8_t idx, uint8_t night, uint8_t on)
-	: 	uavcan::TimerBase::TimerBase(node),
-		_node(node), _id(id), _idx(idx),
-		_duty_night(night), _duty_on(on), _last(0),
-		_enabled(false), _flash(false), _night(false),
-		_pub_output_cmd(_node)
+	bool			_enabled;
+	bool			_flash;
+	bool			_night;
+
+	SimpleOutputSignal()
+	:	_idx(0), _duty_night(0), _duty_on(0), _last(0),
+		_enabled(false), _flash(false), _night(false)
 	{
 	}
 
-	void setNight(bool newNight)
+	void init(uint8_t idx, uint8_t off, uint8_t night, uint8_t on)
+	{
+		_idx = idx;
+		_duty_off = off;
+		_duty_night = night;
+		_duty_on = on;
+	}
+
+	bool setNight(bool newNight)
 	{
 		if (_night == newNight)
-			return;
+			return false;
 
 		_night = newNight;
-		sendOutputCmd();
+		return true;
 	}
-	void setEnable(bool newEnable)
+
+	bool setEnable(bool newEnable)
 	{
 		if (_enabled == newEnable)
-			return;
+			return false;
 
 		_enabled = newEnable;
-		sendOutputCmd();
+		return true;
 	}
 
-	void toggleFlash() {
-		if (_flash) {
-			stop();
-		} else {
-			startPeriodic(uavcan::MonotonicDuration::fromMSec(250));
-		}
+	bool toggleFlash() {
 		_flash = !_flash;
-		sendOutputCmd();
-	}
-
-private:
-	void sendOutputCmd() {
-
-		uint8_t val;
-
-		uint8_t off = (_night) ? _duty_night : 0;
-
-		if (_flash) {
-			val = (_last == 0xff) ? off : 0xff;
-		} else {
-			val = (_enabled) ? 0xff : off;
-		}
-
-
-		_last = val;
-		uavcan::simple::Output msg_out;
-		msg_out.output_id = _id;
-		msg_out.out_mask = 1<<_idx;
-		msg_out.out[_idx] = val;
-		_pub_output_cmd.broadcast(msg_out);
-	}
-	void handleTimerEvent(const uavcan::TimerEvent& event) {
-		(void)event;
-		sendOutputCmd();
+		return true;
 	}
 };
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a)  (sizeof(a)/sizeof(a[0]))
+#endif
+
+class SimpleOutput : uavcan::TimerBase
+{
+private:
+	uavcan::Publisher<uavcan::simple::Output> _pub_output_cmd;
+
+	const uint8_t			_id;
+	SimpleOutputSignal		_out[4];
+	bool					_flash;
+	bool					_flash_last;
+
+
+public:
+	SimpleOutput(uavcan::INode &node, uint8_t id)
+	: 	uavcan::TimerBase::TimerBase(node), _pub_output_cmd(node), _id(id)
+	{
+	}
+
+	bool sendOutputCmd(bool force)
+	{
+		bool updated = false;
+		bool invert_flash_last = false;
+		uavcan::simple::Output msg_out;
+		msg_out.output_id = _id;
+
+		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
+
+			uint8_t val;
+			uint8_t off = (_out[i]._night) ? _out[i]._duty_night : _out[i]._duty_off;
+			uint8_t on = _out[i]._duty_on;
+
+			if (_out[i]._flash) {
+				val = (_flash_last && _out[i]._last == on) ? off : on;
+				invert_flash_last = true;
+			} else {
+				val = (_out[i]._enabled) ? on : off;
+			}
+
+			if (_out[i]._last != val || force) {
+				updated = true;
+				_out[i]._last = val;
+
+				msg_out.out_mask |= 1<<_out[i]._idx;
+				msg_out.out[_out[i]._idx] = val;
+			}
+		}
+
+		if (invert_flash_last)
+			_flash_last = !_flash_last;
+
+		if (updated)
+			_pub_output_cmd.broadcast(msg_out);
+
+		return true;
+	}
+
+	bool sendOutputCmd(void) {
+		sendOutputCmd(false);
+		return true;
+	}
+
+	void config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on)
+	{
+		_out[idx].init(idx, off, night, on);
+	}
+
+	void handleTimerEvent(const uavcan::TimerEvent& event)
+	{
+		(void)event;
+		sendOutputCmd();
+	}
+
+	bool setNight(bool newNight, bool sendNow)
+	{
+		bool updated = false;
+
+		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
+			if (_out[i].setNight(newNight)) {
+				updated = true;
+			}
+		}
+
+		if (updated && sendNow) {
+			sendOutputCmd();
+		}
+		return updated;
+	}
+
+	bool setEnable(uint8_t idx, bool newEnable, bool sendNow)
+	{
+		bool updated = _out[idx].setEnable(newEnable);
+
+		if (updated && sendNow) {
+			sendOutputCmd();
+		}
+		return updated;
+	}
+
+	void toggleFlash(int idx)
+	{
+		_out[idx].toggleFlash();
+
+		bool flash = false;
+		for (unsigned i = 0; i < ARRAY_SIZE(_out); i++) {
+			if (_out[i]._flash) {
+				flash = true;
+				break;
+			}
+		}
+
+		if (flash != _flash) {
+			_flash = flash;
+
+			if (flash) {
+				startPeriodic(uavcan::MonotonicDuration::fromMSec(200));
+			} else {
+				stop();
+			}
+			sendOutputCmd();
+		}
+	}
+};
 
 class UavcanSimple : uavcan::Noncopyable
 {
@@ -195,9 +290,6 @@ private:
     void handleTimerEvent(const uavcan::TimerEvent& event);
 
     /* Output state */
-    SimpleSignalOutput _headlight;
-    SimpleSignalOutput _sig_front_left;
-    SimpleSignalOutput _sig_front_right;
-    SimpleSignalOutput _sig_rear_left;
-    SimpleSignalOutput _sig_rear_right;
+    SimpleOutput _front;
+    SimpleOutput _rear;
 };
