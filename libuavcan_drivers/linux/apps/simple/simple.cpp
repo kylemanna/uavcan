@@ -171,8 +171,10 @@ void UavcanSimple::ambient_sub_cb(const
 	if (msg.analog_id == 0x1) {
 		bool night = (msg.analog > 0xd00) ? true : false;
 
-		_front.setNight(night, true);
-		_rear.setNight(night, true);
+		if (night !=_front.getNight()) {
+			_front.setNight(night, true);
+			_rear.setNight(night, true);
+		}
 	}
 }
 
@@ -215,6 +217,10 @@ bool SimpleOutput::sendOutputCmd(bool force)
 	return true;
 }
 
+bool SimpleOutput::getNight()
+{
+	return _night;
+}
 
 bool SimpleOutput::setNight(bool newNight, bool sendNow)
 {

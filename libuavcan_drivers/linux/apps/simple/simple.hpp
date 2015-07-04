@@ -112,6 +112,7 @@ public:
 
 	void config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on);
 	void handleTimerEvent(const uavcan::TimerEvent& event);
+	bool getNight();
 	bool setNight(bool newNight, bool sendNow);
 	bool setEnable(uint8_t idx, bool newEnable, bool sendNow);
 	void toggleFlash(int idx);
