@@ -67,7 +67,7 @@ UavcanSimple::UavcanSimple(uavcan::INode &node) :
 {
 }
 
-int UavcanSimple::init()
+int UavcanSimple::init(uavcan::CanIOFlags flags)
 {
 	int res;
 
@@ -84,6 +84,9 @@ int UavcanSimple::init()
 		fprintf(stderr, "failed to start uavcan sub: %d", res);
 		return res;
 	}
+
+	_front.canIOFlags(flags);
+	_rear.canIOFlags(flags);
 
 	_front.config(OUT_CENTER_ID, 0x0, 0xff, 0xff);
 	_front.config(OUT_LEFT_ID,   0x0, 0x04, 0xff);
@@ -277,4 +280,9 @@ void SimpleOutput::handleTimerEvent(const uavcan::TimerEvent& event)
 void SimpleOutput::config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on)
 {
 	_out[idx].init(idx, off, night, on);
+}
+
+void SimpleOutput::canIOFlags(uavcan::CanIOFlags flags)
+{
+    _pub_output_cmd.getTransferSender().setCanIOFlags(flags);
 }

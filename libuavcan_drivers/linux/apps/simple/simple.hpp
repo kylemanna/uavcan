@@ -111,6 +111,7 @@ public:
 	bool sendOutputCmd(void) { return sendOutputCmd(false); }
 
 	void config(uint8_t idx, uint8_t off, uint8_t night, uint8_t on);
+	void canIOFlags(uavcan::CanIOFlags flags);
 	void handleTimerEvent(const uavcan::TimerEvent& event);
 	bool getNight();
 	bool setNight(bool newNight, bool sendNow);
@@ -127,7 +128,7 @@ public:
 
 	const char *get_name() const { return NAME; }
 
-	int init();
+	int init(uavcan::CanIOFlags flags = 0);
 
 private:
 	void simple_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::ctrl::Command> &msg);
